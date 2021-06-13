@@ -1,0 +1,24 @@
+{
+    "name": "thinkmanage/ibac",
+    "description": "Identity based access control (000000000)",
+    "type": "library",
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "Ghj",
+            "email": "912524639@qq.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=7.0.0"
+    },
+    "autoload": {
+        "psr-4": {
+           "thinkmanage\\ibac\\": "src/"
+        },
+        "files": [
+            "src/helper.php"
+        ]
+    }
+}
