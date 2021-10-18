@@ -33,6 +33,8 @@ class Ibac {
 		'encode_func' => '',
 		//解密函数
 		'decode_func' => '',
+		//store中存储的字段
+		'store_field'	=> 'all',
 		//token中存储的字段
 		'token_field'	=> ['id','username','related','resource'],
     ];
@@ -78,15 +80,33 @@ class Ibac {
 			return false;
 		}
 		$info = $this->userIdentity($info);
-		$info['token'] = $this->userToken($info);
+		$store = $this->userStore($info);
+		$store['token'] = $this->userToken($info);
 		//根据用户基本信息格式化其他数据
-		return $info;
+		return $store;
+	}
+	
+	
+	/**
+	 * 根据条件设置token字段
+	 *
+	 * @return array
+	 */
+	public function userStore($info=[]){
+		$storeField = $this->config['store_field'];
+		$storeList = [];
+		foreach($info as $k => $v){
+			if(in_array($k,$storeField)){
+				$storeList[$k] = $v;
+			}
+		}
+		return $storeField;
 	}
 	
 	/**
-	 * 根据条件获取用户信息
+	 * 根据条件设置token字段
 	 *
-	 * @return int
+	 * @return array
 	 */
 	public function userToken($info=[]){
 		$tokenField = $this->config['token_field'];
