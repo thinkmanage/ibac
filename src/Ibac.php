@@ -93,6 +93,9 @@ class Ibac {
 	 * @return array
 	 */
 	public function userStore($info=[]){
+		if($this->config['store_field'] == 'all'){
+			return $info;
+		}
 		$storeField = $this->config['store_field'];
 		$storeList = [];
 		foreach($info as $k => $v){
