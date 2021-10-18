@@ -1,6 +1,6 @@
 {
     "name": "thinkmanage/ibac",
-    "description": "Identity based access control (000000000)",
+    "description": "Identity based access control",
     "type": "library",
     "license": "Apache-2.0",
     "authors": [
