@@ -1,7 +1,7 @@
 <?php 
 /**
- * @Name AuthPolicy 
- * @Title 策略验证器
+ * @Name AuthIdentity 
+ * @Title 身份验证器
  * @Author Ghj<912524639@qq.com>
  * @Time 2020-11-19 
  * @Site http:// www.thinkmanage.cn/
@@ -12,7 +12,7 @@ namespace thinkmanage\ibac\validate;
 use think\facade\Db;
 use think\Validate;
 
-class Policy extends Validate{
+class Identity  extends Validate{
 
 	/*========验证规则========*/
 	protected $rule = [
@@ -36,13 +36,6 @@ class Policy extends Validate{
 		'model' => [
 			'require',
 			'max'=>'200',
-		],
-		/* Weight */
-		'weight' => [
-			'require',
-			'number',
-			'max'=>'5',
-			'checkWeight'
 		],
 		/* Status */
 		'status' => [
@@ -70,11 +63,6 @@ class Policy extends Validate{
 		/* Model */
 		'model.require'=>'标题 为 必填',
 		'model.max'=>'标题 的长度不能超过 200 个字符',
-
-		/* Weight */
-		'weight.require'=>'权重 为 必填',
-		'weight.number'=>'权重 只能为 数字',
-		'weight.max'=>'权重 的长度不能超过 5 个字符',
 		
 		/* Status */
 		'status.require'=>'权重 为 必填',
@@ -83,40 +71,18 @@ class Policy extends Validate{
 
 	/*========验证场景========*/
 	public function sceneEdit(){
-		return $this->only(['id','name','title','model','weight','status'])
+		return $this->only(['id','name','title','model','status'])
 		->remove('name', ['require'])
 		->remove('title', ['require'])
 		->remove('model', ['require'])
-		->remove('weight', ['require'])
 		->remove('status', ['require']);
 	}
 	
 	public function sceneAdd(){
-		return $this->only(['name','title','model','weight','status']);
+		return $this->only(['name','title','model','status']);
 	}
 
 	/*========验证函数========*/
-	/**
-	 * 验证唯一
-	 *
-	 * @param unknown $value			
-	 * @param unknown $rule			
-	 * @param unknown $data			
-	 * @return string|boolean
-	 */
-	protected function checkWeight($value, $rule, $data){
-		if (isset($data['id']) && $data['id'] > 0){
-			$map[] = ['id','<>',$data['id']];
-		}else{
-			$map = [];
-		}
-		$map = array_merge($map,[['weight','=',$value]]);
-		$count = \thinkmanage\ibac\model\Identity::where($map)->count();
-		if ($count > 0){
-			return '权重 重复';
-		}
-		return true;
-	}
 	/**
 	 * 验证状态
 	 *

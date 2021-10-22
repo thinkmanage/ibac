@@ -16,15 +16,21 @@ class Resource extends Model{
 	
 	//字段
 	protected $field = [
-		'id', 
-		'name', 
-		'title', 
-		'type', 
-		'model', 
-		'weight', 
-		'status', 
-		'create_time', 
-		'update_time', 
+		'id',
+		'p_id',
+		'identifying',
+		'name',
+		'title',
+		'icon',
+		'ext',
+		'condition',
+		'sort',
+		'type',
+		'is_domain',
+		'hide',
+		'status',
+		'create_time',
+		'update_time',
 	];
 	
 	public static $typeDict = [

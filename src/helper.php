@@ -3,8 +3,6 @@ declare (strict_types = 1);
 
 use thinkmanage\ibac\IbacFacade;
 
-use thinkmanage\ibac\service\Policy;
-
 
 if (!function_exists('ibacOpen')) {
 	/**
@@ -198,121 +196,12 @@ if (!function_exists('ibacCheck')) {
 	}
 }
 
-if (!function_exists('ibacPolicy')) {
-	/**
-     * 根据传入标识获取策略数据
-     * 
-     * @access	public
-     * @param	string	$name	标识
-     * @param	array	$param	参数
-     * @return	array
-     */
-	/*
-		$policy = ibacPolicy('admin/User/index',[
-			'uinfo' => $this->uinfo
-		]);
-		$policyField = ibacPolicyField($policy,[
-			'id' => 'id',
-			'username' => 'username',
-			'truename' => 'truename',
-			'phone' => 'phone',
-			'email' => 'email',
-			'status' => 'status',
-			'create_time' => 'create_time',
-			'update_time' => 'update_time',
-		]);
-		$policyFilter = ibacPolicyFilter($policy);
-		$data = Db::name('SysUser')->where([['id','=',1]])->where($policyFilter)->field($policyField)->select();
-		print_r(Db::getLastSql());
-		print_r($data);
-		exit;
-	*/
-	function ibacPolicy($name,$param=[]){
-		return Policy::getPolicy($name,$param);
+if (!function_exists('ibacRightDomain')) {
+	function ibacRightDomain($name,$pre='',$uinfo=null){
+		return IbacFacade::getRightDomain($name,$pre,$uinfo);
 	}
 }
 
-if (!function_exists('ibacPolicyData')) {
-	/**
-     * 根据传入策略数据(标识)和对应类型获取策略数据中的对应数据
-     * 
-     * @access	public
-     * @param	string	$name	标识
-     * @param	string	$type	需求的数据类型
-     * @param	array	$def	默认值
-     * @return	mixed
-     */
-	function ibacPolicyData($policy,$type='',$def){
-		return Policy::getPolicyData($policy,$type,$def);
-	}
-}
-
-if (!function_exists('ibacPolicyField')) {
-	/**
-     * 根据传入策略数据(标识)与字段获取策略数据中的允许字段
-     * 
-     * @access	public
-     * @param	array	$policy	策略
-     * @param	array	$field	字段
-     * @return	array
-     */
-	function ibacPolicyField($policy,$field=[]){
-		return Policy::policyField($policy,$field);
-	}
-}
-
-if (!function_exists('ibacPolicyFilter')) {
-	/**
-     * 根据传入策略数据(标识)获取策略数据中的过滤规则
-     * 
-     * @access	public
-     * @param	array	$policy	策略
-     * @return	string
-     */
-	function ibacPolicyFilter($policy){
-		return Policy::policyFilter($policy);
-	}
-}
-
-if (!function_exists('ibacPolicyValid')) {
-	/**
-     * 根据传入策略数据(标识)与数据进行验证
-     * 
-     * @access	public
-     * @param	array	$policy	策略
-     * @param	array	$data	数据
-     * @return	string
-     */
-	function ibacPolicyValid($policy,$data=[]){
-		return Policy::policyValid($policy,$data);
-	}
-}
-
-if (!function_exists('ibcaRunCode')) {
-    /**
-     * 运行代码
-	 * 
-     * @param	string	$code	要运行的代码
-     * @param	array	$param	参数
-     * @return mixed
-     */
-	function ibcaRunCode($code,$param=[]){
-		return eval('return '.ibcaParseCode($code,$param).';');
-	}
-}
-
-if (!function_exists('ibcaParseCode')) {
-    /**
-     * 解析代码
-	 * 
-     * @param	string	$code	要运行的代码
-     * @param	array	$param	参数
-     * @return mixed
-     */
-	function ibcaParseCode($code,$param=[]){
-		return \think\facade\View::display($code,$param);
-	}
-}
 
 if (!function_exists('ibacResetCache')) {
 
@@ -324,14 +213,5 @@ if (!function_exists('ibacResetCache')) {
     function ibacResetCache()
     {
 		IbacFacade::resetCache();
-    }
-    function ibcaResourceResetCache(){
-		IbacFacade::resourceResetCache();
-    }
-    function ibcaPolicyResetCache(){
-		IbacFacade::policyResetCache();
-    }
-    function ibcaIdentityResetCache(){
-		IbacFacade::identityResetCache();
     }
 }

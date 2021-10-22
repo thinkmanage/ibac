@@ -68,6 +68,13 @@ class Resource extends Validate{
 			'checkType',
 		],
 		/* Hide */
+		'is_domain' => [
+			'require',
+			'number',
+			'max'=>'1',
+			'checkIsDomain',
+		],
+		/* Hide */
 		'hide' => [
 			'require',
 			'number',
@@ -138,12 +145,12 @@ class Resource extends Validate{
 
 	/*========验证场景========*/
 	public function sceneEdit(){
-		return $this->only(['id','p_id','identifying','name','title','icon','ext','condition','sort','type','hide','status']);
+		return $this->only(['id','p_id','identifying','name','title','icon','ext','condition','sort','type','is_domain','hide','status']);
 		//->append('字段名', ['追加规则'])
 		//->remove('字段名', ['移除规则'])
 	}
 	public function sceneAdd(){
-		return $this->only(['p_id','identifying','name','title','icon','ext','condition','sort','type','hide','status']);
+		return $this->only(['p_id','identifying','name','title','icon','ext','condition','sort','type','is_domain','hide','status']);
 		//->append('字段名', ['追加规则'])
 		//->remove('字段名', ['移除规则'])
 	}
@@ -217,6 +224,12 @@ class Resource extends Validate{
 	protected function checkHide($value, $rule, $data){
 		if (!in_array($value,[0,1])){
 			return '隐藏 数据异常';
+		}
+		return true;
+	}
+	protected function checkIsDomain($value, $rule, $data){
+		if (!in_array($value,[0,1])){
+			return '数据域 数据异常';
 		}
 		return true;
 	}

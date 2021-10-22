@@ -1,6 +1,7 @@
 <?php
 namespace thinkmanage\ibac;
 
+use think\facade\Request;
 use think\facade\Config;
 use think\facade\Cache;
 
@@ -37,6 +38,8 @@ class Ibac {
 		'store_field'	=> 'all',
 		//token中存储的字段
 		'token_field'	=> ['id','username','related','resource'],
+		//是否开启
+		'open_right_domain' => true,
     ];
 	
 	/*
@@ -103,7 +106,7 @@ class Ibac {
 				$storeList[$k] = $v;
 			}
 		}
-		return $storeField;
+		return $storeList;
 	}
 	
 	/**
@@ -119,6 +122,7 @@ class Ibac {
 				$tokenList[$k] = $v;
 			}
 		}
+		$tokenList['token_time'] = time();
 		return $this->encodeFunc(json_encode($tokenList));
 	}
 	
@@ -138,7 +142,7 @@ class Ibac {
 				cookie($this->config['store_name'],$this->encodeFunc(json_encode($info)));
 				return $info;
 				break;
-			case 'header':
+			case 'param':
 				return $info;
 				break;
 			default:
@@ -163,7 +167,7 @@ class Ibac {
 				cookie($this->config['store_name'],null);
 				return true;
 				break;
-			case 'header':
+			case 'param':
 				//非存储类的无法主动注销
 				return true;
 				break;
@@ -190,8 +194,8 @@ class Ibac {
 				}
 				$info = json_decode($this->decodeFunc($info),true);
 				break;
-			case 'header':
-				$info = Request::header('token');
+			case 'param':
+				$info = Request::param('token');
 				if(!$info){
 					return false;
 				}
@@ -255,19 +259,10 @@ class Ibac {
 		}
 		$relatedList = $relatedList->toArray();
 		foreach($relatedList as $v){
-			$info['related'][] = $v['subject_id'].'.'.$v['target_id'];
-		}
-		//获取系统定义的所有身份
-		$identityList = \thinkmanage\ibac\model\Identity::cache();
-		//获取当前身份的所有资源
-		$identityList = array_filter($identityList, function ($v, $k) use ($info) {
-			if (in_array($k,$info['related'])) {
-				return true;
-			}
-		}, ARRAY_FILTER_USE_BOTH);
-		//合并所有身份的资源
-		foreach($identityList as $v){
-			$info['resource'] = array_diff(array_merge($info['resource'],$v['enable']),$v['disable']);
+			$related = $v['subject_id'].'.'.$v['target_id'];
+			$info['related'][] = $related;
+			$right = \thinkmanage\ibac\model\Right::cache($v['subject_id'],$v['target_id']);
+			$info['resource'] = array_merge($info['resource'],$right['resource_ids']);
 		}
 		$info['resource'] = array_unique($info['resource']);
 		return $info;
@@ -303,7 +298,6 @@ class Ibac {
 		return false;
 	}
 	
-	
 	/**
 	 * 根据用户信息和资源标识验证用户是否拥有某些资源资源
 	 *
@@ -315,12 +309,67 @@ class Ibac {
 		if($uid == 0){
 			$uinfo = $this->getStore();
 		}else{
-			$uinfo = $this->getUinfoById($id);
+			$uinfo = $this->getUinfo(['id'=>$uid]);
 		}
 		if(!$uinfo || !is_array($uinfo)){
 			return false;
 		}
 		return $this->checkResource($name,$uinfo);
+	}
+	
+	
+	/**
+	 * 通过资源标识和用户获取数据域
+	 *
+	 * @param array $name 资源标识
+	 * @param array $uinfo 用户基本信息
+	 * @return array
+	 */
+	public function getRightDomain(string $name,string $pre='',array $uinfo=null){
+		if(!$this->config['open_right_domain']){
+			return '1 = 1';
+		}
+		if(!$uinfo){
+			$uinfo = $this->getStore();
+		}
+		if($this->isSuper($uinfo['id'])){
+			return '1 = 1';
+		}
+		if(!$uinfo['related']){
+			return '1 <> 1';
+		}
+		//获取权限id对照表
+		$nti = \thinkmanage\ibac\model\Resource::nti();
+		if(!isset($nti[$name])){
+			return '1 <> 1';
+		}
+		$iK = $nti[$name];
+		$return = [];
+		if($pre != ''){
+			$pre = $pre.'.';
+		}
+		foreach($uinfo['related'] as $v){
+			$related = explode('.',$v);
+			$right = \thinkmanage\ibac\model\Right::cache($related[0],$related[1]);
+			if(!isset($right['domain'][$iK]) || count($right['domain'][$iK])<1){
+				continue;
+			}
+			if(in_array('*',$right['domain'][$iK])){
+				return '1 = 1';
+			}
+			if(in_array('#',$right['domain'][$iK])){
+				return 'create_id = '.$uinfo['id'];
+			}
+			foreach($right['domain'][$iK] as $v2){
+				if($v2){
+					$return[] = "LEFT (".$pre."`domain`,".strlen($v2).") = '".$v2."'";
+				}
+			}
+		}
+		if(count($return)<1){
+			return '1 <> 1';
+		}
+		return implode(' OR ',$return);
 	}
 	
 	/**
@@ -360,32 +409,10 @@ class Ibac {
 	 * 重置缓存
 	 */
     public function resetCache(){
-		//重置资源缓存
-		$this->resourceResetCache();
-		//重置身份缓存
-		$this->identityResetCache();
-		//重置策略缓存
-		$this->policyResetCache();
-    }
-	/**
-	 * 重置身份缓存
-	 *
-	 * @return unknown
-	 */
-    public function identityResetCache(){
-		\thinkmanage\ibac\model\Identity::resetCache();
-    }
-	/**
-	 * 重置策略缓存
-	 */
-    public function policyResetCache(){
-		\thinkmanage\ibac\model\Policy::resetCache();
-    }
-	/**
-	 * 重置资源缓存
-	 */
-    public function resourceResetCache(){
+		\thinkmanage\ibac\model\Organ::resetCache();
 		\thinkmanage\ibac\model\Resource::resetCache();
+		\thinkmanage\ibac\model\Identity::resetCach();
+		\thinkmanage\ibac\model\Right::resetCacheAll();
     }
 	
 	/**

@@ -46,11 +46,13 @@ class Related extends Model {
 	protected function getCreateTimeAttr($value,$data){
 		return date( "Y-m-d H:i:s", $value);;
 	}
+	
 	protected function getUpdateTimeAttr($value,$data){
 		return date( "Y-m-d H:i:s", $value);;
 	}
+	
 	protected function getSubjectTitleAttr($value,$data){
-		$arr = config('ibac.subject');
+		$arr = Identity::cache();
 		if(isset($arr[$data['subject_id']])){
 			return $arr[$data['subject_id']]['title'];
 		}else{
@@ -59,16 +61,13 @@ class Related extends Model {
 	}
 	
 	protected function getTargetTitleAttr($value,$data){
-		$arr = config('ibac.subject');
-		if(isset($arr[$data['subject_id']])){
-			$subject = $arr[$data['subject_id']]['model'];
-			$subject_pk = $arr[$data['subject_id']]['key'];
-			$title = $subject::where([[$subject_pk,'=',$data['target_id']]])->value('title');
-			if($title){
-				return $title;
-			}else{
-				return '数据异常';
-			}
+		$arr = Identity::cache();
+		if(
+			isset($arr[$data['subject_id']]) && 
+			isset($arr[$data['subject_id']]['children']) && 
+			isset($arr[$data['subject_id']]['children'][$data['target_id']])
+		){
+			return $arr[$data['subject_id']]['children'][$data['target_id']];
 		}else{
 			return '数据异常';
 		}

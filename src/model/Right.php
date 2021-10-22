@@ -19,8 +19,8 @@ class Right extends Model{
 		'id', 
 		'subject_id', 
 		'target_id', 
-		'enable', 
-		'disable', 
+		'resource_ids',
+		'domain',
 		'create_time', 
 		'update_time',
 	];
@@ -37,12 +37,10 @@ class Right extends Model{
 		$data["update_time"] = time();;
 	}
 	public static function onAfterWrite(Model $data){
-		\thinkmanage\ibac\model\Identity::resetCache();
+		self::resetCache($data['subject_id'],$data['target_id']);
 	}
 	//public static function onBeforeDelete(Model $data){}
-	public static function onAfterDelete(Model $data){
-		\thinkmanage\ibac\model\Identity::resetCache();
-	}
+	//.public static function onAfterDelete(Model $data){}
 
 	//获取器
 
@@ -51,17 +49,60 @@ class Right extends Model{
 	//关联模型
 	
 	//模型方法
-	public static function getRule($subject_id,$target_id){
-		$result = [
-			'enable'=>[],
-			'disable'=>[]
+	
+	public static function getRightData($subject_id,$target_id){
+		$data = [
+			'resource_ids' => [],
+			'domain' => []
 		];
-		$right = self::where([['subject_id','=',$subject_id],['target_id','=',$target_id]])->field(['enable','disable'])->find();
-		if($right){
-			$right = $right->toArray();
-			$result['enable'] = explode(',',$right['enable']);
-			$result['disable'] = explode(',',$right['disable']);
+		$info = self::where([['subject_id','=',$subject_id],['target_id','=',$target_id]])->field(['resource_ids','domain'])->find();
+		if(!$info){
+			return $data;
 		}
-		return $result;
+		$data['resource_ids'] = explode(',',$info['resource_ids']);
+		if($info['domain']){
+			$domainList = explode('|',$info['domain']);
+			foreach($domainList as $v2){
+				$rd = explode(':',$v2);
+				if(count($rd) == 2){
+					$data['domain'][$rd[0]] = explode(',',$rd[1]);
+				}
+			}
+		}
+		return $data;
 	}
+	/**
+     * 设置/获取缓存
+     * @access public
+     * @return all
+     */
+	public static function cache($subject_id,$target_id){
+		$cache = Cache::get('ibac_right_'.$subject_id.'.'.$target_id,null);
+		if(!$cache){
+			$cache = self::getRightData($subject_id,$target_id);
+			Cache::set('ibac_right_'.$subject_id.'.'.$target_id,$cache);
+		}
+		return $cache;
+	}
+	
+	/**
+     * 设置/获取缓存
+     * @access public
+     * @return all
+     */
+	public static function resetCache($subject_id,$target_id){
+		Cache::delete('ibac_right_'.$subject_id.'.'.$target_id);
+		return self::cache($subject_id,$target_id);
+	}
+	
+	public static function resetCacheAll(){
+		$list = self::field(['subject_id','target_id'])->select();
+		foreach($list as $v){
+			Cache::delete('ibac_right_'.$v['subject_id'].'.'.$v['target_id']);
+			self::cache($v['subject_id'],$v['target_id']);
+		}
+		return true;
+	}
+	
+	
 }

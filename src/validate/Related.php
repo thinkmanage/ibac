@@ -76,7 +76,7 @@ class Related extends Validate{
 	/*========验证函数========*/
 	
 	protected function checkSubjectId($value, $rule, $data){
-		$subject_list = \thinkmanage\ibac\model\Identity::where([['status','=',1]])->order(['weight'=>'desc'])->column('id,name,title,model', 'name');
+		$subject_list = \thinkmanage\ibac\model\Identity::where([['status','=',1]])->order(['id'=>'asc'])->column('id,name,title,model', 'name');
 		if(!array_key_exists($value,$subject_list)){
 			return '类型 错误';
 		}
@@ -84,15 +84,6 @@ class Related extends Validate{
 		$count = $subject['model']::where([['id','=',$data['target_id']]])->count ();
 		if($count<1){
 			return '身份 错误';
-		}
-		if($subject['multiple'] == 0){
-			$count = \thinkmanage\ibac\model\Related::where([
-				['user_id','=',$data['user_id']],
-				['subject_id','=',$data['subject_id']],
-			])->count ();
-			if($count>0){
-				return $subject['title'].' 不允许多选';
-			}
 		}
 		$count = \thinkmanage\ibac\model\Related::where([
 			['user_id','=',$data['user_id']],

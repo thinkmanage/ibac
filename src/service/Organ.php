@@ -3,10 +3,10 @@ namespace thinkmanage\ibac\service;
 
 use think\Model;
 
-use thinkmanage\ibac\model\Right as RightModel;
-use thinkmanage\ibac\validate\Right as RightValidate;
+use thinkmanage\ibac\model\Organ as OrganModel;
+use thinkmanage\ibac\validate\Organ as OrganValidate;
 
-class Right{
+class Organ{
 	
 	/**
      * 新增数据
@@ -16,12 +16,12 @@ class Right{
      * @return	bool
      */
 	public static function _add(array $param){
-		$valid = new RightValidate();
+		$valid = new OrganValidate();
 		if (!$valid->scene('add')->check($param)){
 			throw new \Exception($valid->getError()?$valid->getError():'验证失败');
 		}
 		try {
-			return RightModel::create($param);
+			return OrganModel::create($param);
 		}catch(\Exception $e){
 			throw new \Exception($e->getMessage());
 		}
@@ -35,19 +35,19 @@ class Right{
      * @return	bool
      */
 	public static function _edit(array $param){
-		$valid = new RightValidate();
+		$valid = new OrganValidate();
 		if (!$valid->scene('edit')->check($param)){
 			throw new \Exception($valid->getError()?$valid->getError():'验证失败');
 		}
 		try {
-			return RightModel::update($param,['id'=>$param ['id']]);
+			return OrganModel::update($param,['id'=>$param ['id']]);
 		}catch(\Exception $e){
 			throw new \Exception($e->getMessage());
 		}
 	}
 	
 	/**
-     * 删除数据
+     * 修改数据
      * 
      * @access	public
      * @param	array	$idList	主键组成的数组
@@ -58,25 +58,10 @@ class Right{
 			throw new \Exception('参数异常,主键不存在');
 		}
 		try {
-			RightModel::destroy($idList);
+			OrganModel::destroy($idList);
 			return true;
 		}catch(\Exception $e){
 			throw new \Exception($e->getMessage());
 		}
-	}
-	
-	/**
-     * 删除数据(条件)
-     * 
-     * @access	public
-     * @param	array	$map	删除条件
-     * @return	bool
-     */
-	public static function _delByMap(array $map){
-		$idList = RightModel::where($map)->column('id');
-		if(count($idList)<1){
-			return true;
-		}
-		return self::_del($idList);
 	}
 }
