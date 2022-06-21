@@ -33,7 +33,6 @@ class Organ extends Validate{
 			'max'=>'120',
 		],
 		'code' => [
-			'require',
 			'max'=>'120',
 			'checkCode'
 		],
@@ -119,6 +118,9 @@ class Organ extends Validate{
 	 * @return string|boolean
 	 */
 	protected function checkCode($value, $rule, $data){
+		if($value == null){
+			return true;
+		}
 		$map = [
 			['code','=',$value]
 		];

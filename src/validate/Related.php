@@ -16,25 +16,21 @@ class Related extends Validate{
 
 	/*========验证规则========*/
 	protected $rule = [
-		/* Id */
 		'id' => [
 			'require',
 			'number',
 			'max'=>'10',
 		],
-		/* UserId */
 		'user_id' => [
 			'require',
 			'number',
 			'max'=>'10',
 		],
-		/* SubjectId */
 		'subject_id' => [
 			'require',
 			'max'=>'10',
 			'checkSubjectId'
 		],
-		/* TargetId */
 		'target_id' => [
 			'require',
 			'number',
@@ -45,21 +41,14 @@ class Related extends Validate{
 
 	/*========提示信息========*/
 	protected $message = [
-		/* Id */
 		'id.require'=>'主键 为 必填',
 		'id.number'=>'主键 只能为 数字',
 		'id.max'=>'主键 的长度不能超过 10 个字符',
-
-		/* UserId */
 		'user_id.require'=>'用户主键 为 必填',
 		'user_id.number'=>'用户主键 只能为 数字',
 		'user_id.max'=>'用户主键 的长度不能超过 10 个字符',
-
-		/* SubjectId */
 		'subject_id.require'=>'类型 为 必填',
 		'subject_id.max'=>'类型 的长度不能超过 10 个字符',
-
-		/* TargetId */
 		'target_id.require'=>'身份 为 必填',
 		'target_id.number'=>'身份 只能为 数字',
 		'target_id.max'=>'身份 的长度不能超过 10 个字符',
@@ -76,18 +65,18 @@ class Related extends Validate{
 	/*========验证函数========*/
 	
 	protected function checkSubjectId($value, $rule, $data){
-		$subject_list = \thinkmanage\ibac\model\Identity::where([['status','=',1]])->order(['id'=>'asc'])->column('id,name,title,model', 'name');
-		if(!array_key_exists($value,$subject_list)){
+		$subjectList = config('ibac.identity');
+		if(!isset($subjectList[$value])){
 			return '类型 错误';
 		}
-		$subject = $subject_list[$value];
+		$subject = $subjectList[$value];
 		$count = $subject['model']::where([['id','=',$data['target_id']]])->count ();
 		if($count<1){
-			return '身份 错误';
+			return $subject['title'].' 不存在';
 		}
 		$count = \thinkmanage\ibac\model\Related::where([
 			['user_id','=',$data['user_id']],
-			['subject_id','=',$data['subject_id']],
+			['subject_id','=',$value],
 			['target_id','=',$data['target_id']],
 		])->count ();
 		if($count>0){

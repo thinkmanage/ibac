@@ -6,8 +6,6 @@ use think\facade\Config;
 use think\facade\Cache;
 use think\facade\Db;
 
-use thinkmanage\ibac\model\Identity;
-
 class Related extends Model {
 	
 	//表名
@@ -52,7 +50,7 @@ class Related extends Model {
 	}
 	
 	protected function getSubjectTitleAttr($value,$data){
-		$arr = Identity::cache();
+		$arr = Config::get('ibac.identity');
 		if(isset($arr[$data['subject_id']])){
 			return $arr[$data['subject_id']]['title'];
 		}else{
@@ -61,13 +59,11 @@ class Related extends Model {
 	}
 	
 	protected function getTargetTitleAttr($value,$data){
-		$arr = Identity::cache();
-		if(
-			isset($arr[$data['subject_id']]) && 
-			isset($arr[$data['subject_id']]['children']) && 
-			isset($arr[$data['subject_id']]['children'][$data['target_id']])
-		){
-			return $arr[$data['subject_id']]['children'][$data['target_id']];
+		$arr = Config::get('ibac.identity');
+		if(isset($arr[$data['subject_id']])){
+			$model = $arr[$data['subject_id']]['model'];
+			$cache = $model::_cache();
+			return $cache[$data['target_id']];
 		}else{
 			return '数据异常';
 		}

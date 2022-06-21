@@ -21,7 +21,6 @@ class Organ extends Model{
 	protected $field = [
 		'id',
 		'p_id',
-		'code',
 		'title',
 		'sort',
 		'domain',
@@ -64,6 +63,11 @@ class Organ extends Model{
 			$dd = Db::name('ibac_organ')->where(['id'=>$data['id']])->value('domain');
 		}else{
 			$dd = $data['domain'];
+		}
+		$userModel = ibacGetConf('user_model');
+		$userCount = $userModel::where("LEFT (`domain`,".strlen($dd).") = '".$dd."'")->count();
+		if($userCount > 0){
+			throw new \Exception('此组织及下级组织尚有用户存在,禁止删除');
 		}
 		Db::name('ibac_organ')->where("id <> ".$data['id']." and LEFT (`domain`,".strlen($dd).") = '".$dd."'")->delete();
 	}

@@ -20,11 +20,13 @@ class Right extends Model{
 		'subject_id', 
 		'target_id', 
 		'resource_ids',
-		'domain',
+		'permission_ids',
 		'create_time', 
 		'update_time',
 	];
-
+	protected $jsonAssoc= true;
+	protected $json = ['permission_ids'];
+	
 	//模型事件
 	//public static function onAfterRead(Model $data){}
 	public static function onBeforeInsert(Model $data){
@@ -37,7 +39,10 @@ class Right extends Model{
 		$data["update_time"] = time();;
 	}
 	public static function onAfterWrite(Model $data){
-		self::resetCache($data['subject_id'],$data['target_id']);
+		$info = self::field(['subject_id','target_id'])->find($data['id']);
+		$subject_id = $info['subject_id'];
+		$target_id = $info['target_id'];
+		self::resetCache($subject_id,$target_id);
 	}
 	//public static function onBeforeDelete(Model $data){}
 	//.public static function onAfterDelete(Model $data){}
@@ -53,22 +58,18 @@ class Right extends Model{
 	public static function getRightData($subject_id,$target_id){
 		$data = [
 			'resource_ids' => [],
-			'domain' => []
+			'permission_ids' => []
 		];
-		$info = self::where([['subject_id','=',$subject_id],['target_id','=',$target_id]])->field(['resource_ids','domain'])->find();
+		$map = [
+			['subject_id','=',$subject_id],
+			['target_id','=',$target_id]
+		];
+		$info = self::where($map)->field(['resource_ids','permission_ids'])->find();
 		if(!$info){
 			return $data;
 		}
 		$data['resource_ids'] = explode(',',$info['resource_ids']);
-		if($info['domain']){
-			$domainList = explode('|',$info['domain']);
-			foreach($domainList as $v2){
-				$rd = explode(':',$v2);
-				if(count($rd) == 2){
-					$data['domain'][$rd[0]] = explode(',',$rd[1]);
-				}
-			}
-		}
+		$data['permission_ids'] = $info['permission_ids'];
 		return $data;
 	}
 	/**

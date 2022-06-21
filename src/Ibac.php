@@ -4,8 +4,8 @@ namespace thinkmanage\ibac;
 use think\facade\Request;
 use think\facade\Config;
 use think\facade\Cache;
+use think\facade\View;
 
-use thinkmanage\ibac\model\Identity;
 use thinkmanage\ibac\model\Resource;
 use thinkmanage\ibac\model\Related;
 
@@ -23,7 +23,9 @@ class Ibac {
 		//登录类型
 		'type'	=> 'session',
 		//登录标识
-		'store_name'	=> 'uinfo',
+		'store_name'	=> 'token',
+		//登录超时时间
+		'store_timeout' => 7200,
 		//登录账户字段
 		'account_field'	=> 'username|phone|email',
 		//例外资源
@@ -34,12 +36,13 @@ class Ibac {
 		'encode_func' => '',
 		//解密函数
 		'decode_func' => '',
-		//store中存储的字段
-		'store_field'	=> 'all',
 		//token中存储的字段
-		'token_field'	=> ['id','username','related','resource'],
+		'token_field'	=> ['id','domain','related','resource'],
 		//是否开启
 		'open_right_domain' => true,
+		//身份列表
+		'identity'=>[
+		]
     ];
 	
 	/*
@@ -54,76 +57,80 @@ class Ibac {
 		);
     }
 	
-	public function getConf($name=''){
-		if($name != ''){
-			return $this->config[$name];
-		}else{
-			return $this->config;
-		}
+	/*
+	 * 获取全部配置
+	 *
+     * @return array
+	 */
+	public function getConfigs(){
+		return $this->config;
 	}
 	
-	public function setConf($data,$name=''){
-		if($name != ''){
-			$this->config[$name] = $data;
-		}else{
-			$this->config = array_merge($this->config,$data);
-		}
+	/*
+	 * 设置配置
+	 *
+	 * @param array $config 配置
+	 */
+	public function setConfigs($config){
+		$this->config = array_merge($this->config,$config);
 	}
+	
+	/*
+	 * 获取配置_单项
+	 *
+	 * @param string $name 标识
+     * @return mixed
+	 */
+	public function getConfig($name){
+		if(!$name || !isset($this->config[$name])){
+			throw new \Exception('存储类型不存在');
+		}
+		return $this->config[$name];
+	}
+	
+	/*
+	 * 设置配置_单项
+	 *
+	 * @param string $name 标识
+	 * @param mixed $value 配置
+	 */
+	public function setConfig($name,$value){
+		$this->config[$name] = $value;
+	}
+	
 	
 	/**
-	 * 根据条件获取用户信息
+	 * 获取Store数据
 	 *
-	 * @return int
+	 * @return array
 	 */
-	public function getUinfo($map=[]){
-		$model = $this->config['user_model'];
-		//从数据库中通过登录账户字段查询用户
-		$info = $model::info($map);
+	public function getStore(){
+		$info = null;
+		switch ($this->getConfig('type')){
+			case 'session':
+				$info = session($this->getConfig('store_name'));
+				break;
+			case 'cookie':
+				$info = cookie($this->getConfig('store_name'));
+				break;
+			case 'param':
+				$info = Request::param($this->getConfig('store_name'));
+				break;
+			case 'header':
+				$info = Request::header($this->getConfig('store_name'));
+				break;
+			default:
+				throw new \Exception('存储类型不存在');
+				;
+		}
 		if(!$info){
-			return false;
+			throw new \Exception('数据不存在');
 		}
-		$info = $this->userIdentity($info);
-		$store = $this->userStore($info);
-		$store['token'] = $this->userToken($info);
-		//根据用户基本信息格式化其他数据
-		return $store;
-	}
-	
-	
-	/**
-	 * 根据条件设置token字段
-	 *
-	 * @return array
-	 */
-	public function userStore($info=[]){
-		if($this->config['store_field'] == 'all'){
-			return $info;
+		$info = json_decode($this->decodeFunc($info),true);
+		if(!$info){
+			throw new \Exception('数据异常');
 		}
-		$storeField = $this->config['store_field'];
-		$storeList = [];
-		foreach($info as $k => $v){
-			if(in_array($k,$storeField)){
-				$storeList[$k] = $v;
-			}
-		}
-		return $storeList;
-	}
-	
-	/**
-	 * 根据条件设置token字段
-	 *
-	 * @return array
-	 */
-	public function userToken($info=[]){
-		$tokenField = $this->config['token_field'];
-		$tokenList = [];
-		foreach($info as $k => $v){
-			if(in_array($k,$tokenField)){
-				$tokenList[$k] = $v;
-			}
-		}
-		$tokenList['token_time'] = time();
-		return $this->encodeFunc(json_encode($tokenList));
+		return $info;
 	}
 	
 	/**
@@ -132,23 +139,30 @@ class Ibac {
 	 * @param array $info 用户基本信息
 	 * @return bool
 	 */
-	public function _setStore($info){
-		switch ($this->config['type']){
+	public function setStore($info){
+		$tokens = [];
+		foreach($info as $k => $v){
+			if(in_array($k,$this->getConfig('token_field'))){
+				$tokens[$k] = $v;
+			}
+		}
+		$tokens['token_time'] = time() + $this->getConfig('store_timeout');
+		$token = $this->encodeFunc(json_encode($tokens));
+		switch ($this->getConfig('type')){
 			case 'session':
-				session($this->config['store_name'],$info);
-				return $info;
+				session($this->getConfig('store_name'),$token);
 				break;
 			case 'cookie':
-				cookie($this->config['store_name'],$this->encodeFunc(json_encode($info)));
-				return $info;
+				cookie($this->getConfig('store_name'),$token);
 				break;
 			case 'param':
-				return $info;
+			case 'header':
 				break;
 			default:
 				throw new \Exception('存储类型不存在');
 				;
 		}
+		return $token;
 	}
 	
 	/**
@@ -158,17 +172,18 @@ class Ibac {
 	 * @return unknown
 	 */
 	public function clearStore(){
-		switch ($this->config['type']){
+		switch ($this->getConfig('type')){
 			case 'session':
-				session($this->config['store_name'],null);
+				session($this->getConfig('store_name'),null);
 				return true;
 				break;
 			case 'cookie':
-				cookie($this->config['store_name'],null);
+				cookie($this->getConfig('store_name'),null);
 				return true;
 				break;
 			case 'param':
-				//非存储类的无法主动注销
+			case 'header':
+				//非服务器存储类的无法主动注销
 				return true;
 				break;
 			default:
@@ -178,54 +193,143 @@ class Ibac {
 	}
 	
 	/**
-	 * 获取Store数据
+	 * Store续期
 	 *
-	 * @return array
+	 * @param string $id(用户ID)
+	 * @return unknown
 	 */
-	public function getStore(){
-		switch ($this->config['type']){
+	public function renewalStore(){
+		$store = $this->getStore();
+		$store['token_time'] = time() + $this->getConfig('store_timeout');
+		switch ($this->getConfig('type')){
 			case 'session':
-				$info = session($this->config['store_name']);
+				session($this->getConfig('store_name'),$store);
 				break;
 			case 'cookie':
-				$info = cookie($this->config['store_name']);
-				if(!$info){
-					return false;
-				}
-				$info = json_decode($this->decodeFunc($info),true);
+				cookie($this->getConfig('store_name'),$store);
 				break;
 			case 'param':
-				$info = Request::param('token');
-				if(!$info){
-					return false;
-				}
-				$info = json_decode($this->decodeFunc($info),true);
+			case 'header':
 				break;
 			default:
 				throw new \Exception('存储类型不存在');
 				;
 		}
-		if(!$info){
-			return false;
-		}
-		return $info;
+		return $store;
 	}
-	
 	
 	/**
 	 * 获取Store数据中的某一项数据
 	 *
-	 * @param string	$type 类型
-	 * @param mixed		$def 默认错误返回数据
+	 * @param string	$name 类型
 	 * @return mixed
 	 */
-	public function getStoreData(string $type,$def=false){
-		$storeData = $this->getStore();
-		if(!$storeData || !isset($storeData[$type])){
-			return $def;
+	public function getStoreAttr(string $name){
+		try {
+			$store = $this->getStore();
+			return $store[$name];
+		}catch(\Exception $e){
+			throw new \Exception('对应数据在store中不存在');
 		}
-		return $storeData[$type];
 	}
+	
+	
+	/**
+	 * 设置Store数据中的某一项数据
+	 *
+	 * @param string	$type 类型
+	 * @param mixed		$val 默认错误返回数据
+	 */
+	public function setStoreAttr(string $name,$value){
+		try {
+			$store = $this->getStore();
+			$store[$name] = $val;
+			$this->setStore($storeData);
+		}catch(\Exception $e){
+			throw new \Exception('对应数据在store中不存在');
+		}
+	}
+	
+	/**
+	 * 根据条件获取用户信息
+	 *
+	 * @return int
+	 */
+	public function findUser(array $map=[]){
+		$model = $this->getConfig('user_model');
+		//从数据库中通过登录账户字段查询用户
+		$info = $model::info($map);
+		if(!$info){
+			throw new \Exception('用户不存在');
+		}
+		//获取身份
+		$info['related']	= $this->findIdentity($info['id']);
+		//获取对应数据权限
+		$right				= $this->findRight($info['related']);
+		$info	= array_merge($info,$right);
+		return $info;
+	}
+	
+	/**
+	 * 根据用户ID获取身份数组
+	 *
+	 * @param int $id 用户ID
+	 * @return array
+	 */
+	public function findIdentity(int $id){
+		//获取所有关联的身份
+		$relatedList = \thinkmanage\ibac\model\Related::where([['user_id','=',$id],['status','=',1]])->field(['subject_id','target_id'])->select();
+		//不存在身份
+		if(!$relatedList){
+			return [];
+		}
+		$identitys = [];
+		foreach($relatedList as $v){
+			$identitys[] = $v['subject_id'].'.'.$v['target_id'];
+		}
+		return $identitys;
+	}
+	
+	/**
+	 * 根据用户身份数组获取资源/数据权限
+	 *
+	 * @param array $identitys 身份数组
+	 * @return array
+	 */
+	public function findRight(array $identitys){
+		$rights = [];
+		$resources = [];
+		$permissions = [];
+		foreach($identitys as $v){
+			$temp = explode('.',$v);
+			$right = \thinkmanage\ibac\model\Right::cache($temp[0],$temp[1]);
+			$resources = array_merge($resources,$right['resource_ids']);
+			//遍历取回的permission 依次合并去重
+			foreach($right['permission_ids'] as $pkey => $pval){
+				$pval = explode(',',$pval);
+				if(!isset($permissions[$pkey])){
+					$permissions[$pkey] = [];
+				}
+				$permissions[$pkey] = array_unique(array_merge($permissions[$pkey],$pval));
+			}
+		}
+		return [
+			'resource'=>$resources,
+			'permission'=>$permissions
+		];
+	}
+	
+	
+	/*
+	
+	验证store 
+	验证store超时
+	
+	获取超管
+	验证资源是否需要
+	*/
+	
+	
 	
 	/**
 	 * 是否为超级管理员
@@ -241,34 +345,6 @@ class Ibac {
 	}
 	
 	/**
-	 * 根据用户基本信息格式化其他数据
-	 *
-	 * @param array $info 用户基本信息
-	 * @return array
-	 */
-	public function userIdentity(array $info){
-		//设置用户身份
-		$info['related'] = [];
-		//设置资源
-		$info['resource'] = [];
-		//获取所有关联的身份
-		$relatedList = \thinkmanage\ibac\model\Related::where([['user_id','=',$info['id']],['status','=',1]])->field(['subject_id','target_id'])->select();
-		//不存在身份
-		if(!$relatedList){
-			return $info;
-		}
-		$relatedList = $relatedList->toArray();
-		foreach($relatedList as $v){
-			$related = $v['subject_id'].'.'.$v['target_id'];
-			$info['related'][] = $related;
-			$right = \thinkmanage\ibac\model\Right::cache($v['subject_id'],$v['target_id']);
-			$info['resource'] = array_merge($info['resource'],$right['resource_ids']);
-		}
-		$info['resource'] = array_unique($info['resource']);
-		return $info;
-	}
-	
-	/**
 	 * 根据用户信息和资源标识验证用户是否拥有某些资源资源
 	 *
 	 * @param array $name 资源标识
@@ -280,9 +356,11 @@ class Ibac {
 		if($this->resourceException($name)){
 			return true;
 		}
+		//从存储中获取uinfo
 		if(!$uinfo){
 			$uinfo = $this->getStore();
 		}
+		//判断是否为超管
 		if($this->isSuper($uinfo['id'])){
 			return true;
 		}
@@ -325,51 +403,43 @@ class Ibac {
 	 * @param array $uinfo 用户基本信息
 	 * @return array
 	 */
-	public function getRightDomain(string $name,string $pre='',array $uinfo=null){
-		if(!$this->config['open_right_domain']){
-			return '1 = 1';
-		}
-		if(!$uinfo){
+	public function getPermission(string $name,array $uinfo=[]){
+		//如果不存在uinfo 从存储中获取
+		if(count($uinfo)<1){
 			$uinfo = $this->getStore();
 		}
-		if($this->isSuper($uinfo['id'])){
-			return '1 = 1';
-		}
-		if(!$uinfo['related']){
+		//未获取到uinfo 则返回失败查询
+		if(!$uinfo){
 			return '1 <> 1';
+		}
+		//判断是否为超管 超管无视数据权限
+		if($this->isSuper($uinfo['id'])){
+			return '';
 		}
 		//获取权限id对照表
 		$nti = \thinkmanage\ibac\model\Resource::nti();
+		//当前资源是否存在
 		if(!isset($nti[$name])){
 			return '1 <> 1';
 		}
 		$iK = $nti[$name];
-		$return = [];
-		if($pre != ''){
-			$pre = $pre.'.';
-		}
-		foreach($uinfo['related'] as $v){
-			$related = explode('.',$v);
-			$right = \thinkmanage\ibac\model\Right::cache($related[0],$related[1]);
-			if(!isset($right['domain'][$iK]) || count($right['domain'][$iK])<1){
-				continue;
-			}
-			if(in_array('*',$right['domain'][$iK])){
-				return '1 = 1';
-			}
-			if(in_array('#',$right['domain'][$iK])){
-				return 'create_id = '.$uinfo['id'];
-			}
-			foreach($right['domain'][$iK] as $v2){
-				if($v2){
-					$return[] = "LEFT (".$pre."`domain`,".strlen($v2).") = '".$v2."'";
-				}
-			}
-		}
-		if(count($return)<1){
+		//判断用户对当前资源的数据权限
+		if(!isset($uinfo['permission'][$iK])){
+			//TODO 严格过滤则不返回任何数据
+			//非严格过滤返回
 			return '1 <> 1';
 		}
-		return implode(' OR ',$return);
+		//获取数据权限的规则
+		$conditions = \thinkmanage\ibac\model\Permission::getConditions($uinfo['permission'][$iK]);
+		$permissions = [];
+		foreach($conditions as $v){
+			if($v != ''){
+				$permissions[] = View::display($v,[
+					'uinfo' => $uinfo
+				]);
+			}
+		}
+		return implode(' AND ',$permissions);
 	}
 	
 	/**
@@ -411,7 +481,6 @@ class Ibac {
     public function resetCache(){
 		\thinkmanage\ibac\model\Organ::resetCache();
 		\thinkmanage\ibac\model\Resource::resetCache();
-		\thinkmanage\ibac\model\Identity::resetCach();
 		\thinkmanage\ibac\model\Right::resetCacheAll();
     }
 	

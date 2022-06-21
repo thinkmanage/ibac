@@ -11,7 +11,7 @@ if (!function_exists('ibacOpen')) {
 	 * @return bool
 	 */
 	function ibacOpen(){
-		return IbacFacade::getConf('is_open') == true;
+		return IbacFacade::getConfig('is_open') == true;
 	}
 }
 
@@ -45,8 +45,8 @@ if (!function_exists('ibacLoginByAccount')) {
 		if(!$password){
 			throw new \Exception('用户密码不存在');
 		}
-		$field = IbacFacade::getConf('account_field');
-		$info = IbacFacade::getUinfo([
+		$field = IbacFacade::getConfig('account_field');
+		$info = IbacFacade::findUser([
 			$field => $account,
 			'password' => md5($password)
 		]);
@@ -56,8 +56,7 @@ if (!function_exists('ibacLoginByAccount')) {
 		if(!isset($info['status']) || $info['status'] != 1){
 			throw new \Exception('用户被禁用');
 		}
-		IbacFacade::_setStore($info);
-		return $info;
+		return IbacFacade::setStore($info);
 	}
 }
 
@@ -80,8 +79,7 @@ if (!function_exists('ibacLoginById')) {
 		if(!isset($info['status']) || $info['status'] != 1){
 			throw new \Exception('用户被禁用');
 		}
-		IbacFacade::_setStore($info);
-		return $info;
+		return IbacFacade::setStore($info);
 	}
 }
 
@@ -117,14 +115,20 @@ if (!function_exists('_uinfo')) {
 	 * @param int $id	用户ID
 	 * @return int
 	 */
-	function _uinfo($id=0){
-		//要取的用户ID>0 且不是当前登录用户
-		if($id>0 && _uid()!=$id){
-			//从数据库中获取用户数据
-			return IbacFacade::getUinfo(['id'=>$id]);
-		}
-		//从store中获取用户数据
+	function _uinfo(){
 		return IbacFacade::getStore();
+	}
+}
+
+if (!function_exists('_getUinfoByDb')) {
+	/**
+	 * 获取用户信息
+	 *
+	 * @param int $id	用户ID
+	 * @return int
+	 */
+	function _getUinfoByDb($id=0){
+		return IbacFacade::getUinfo(['id'=>$id]);
 	}
 }
 
@@ -135,13 +139,17 @@ if (!function_exists('_uid')) {
 	 * @return int
 	 */
 	function _uid(){
-		return IbacFacade::getStoreData('id',0);
+		try {
+			return IbacFacade::getStoreAttr('id');
+		}catch(\Exception $e){
+			return 0;
+		}
 	}
 }
 
 if (!function_exists('ibacUinfoResource')) {
 	function ibacUinfoResource(){
-		return IbacFacade::getStoreData('resource',[]);
+		return IbacFacade::getStoreAttr('resource',[]);
 	}
 }
 
@@ -153,7 +161,7 @@ if (!function_exists('ibacStoreData')) {
 		if(isset($uinfo[$type])){
 			return $uinfo[$type];
 		}
-		return IbacFacade::getStoreData($type,[]);
+		return IbacFacade::getStoreAttr($type,[]);
 	}
 }
 
@@ -162,7 +170,7 @@ if (!function_exists('ibacUinfoRelated')) {
 		if(isset($uinfo['related'])){
 			return $uinfo['related'];
 		}
-		return IbacFacade::getStoreData('related',[]);
+		return IbacFacade::getStoreAttr('related',[]);
 	}
 }
 
@@ -196,9 +204,9 @@ if (!function_exists('ibacCheck')) {
 	}
 }
 
-if (!function_exists('ibacRightDomain')) {
-	function ibacRightDomain($name,$pre='',$uinfo=null){
-		return IbacFacade::getRightDomain($name,$pre,$uinfo);
+if (!function_exists('ibacPermission')) {
+	function ibacPermission($name,$uinfo=[]){
+		return IbacFacade::getPermission($name,$uinfo);
 	}
 }
 
@@ -213,5 +221,30 @@ if (!function_exists('ibacResetCache')) {
     function ibacResetCache()
     {
 		IbacFacade::resetCache();
+    }
+}
+
+if (!function_exists('ibacGetConf')) {
+
+    /**
+     * 获取配置
+	 * 
+     * @return void
+     */
+    function ibacGetConf($name)
+    {
+		return IbacFacade::getConfig($name);
+    }
+}
+if (!function_exists('ibacSetConf')) {
+
+    /**
+     * 获取配置
+	 * 
+     * @return void
+     */
+    function ibacSetConf($name,$value)
+    {
+		return IbacFacade::setConf($name,$value);
     }
 }

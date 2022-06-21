@@ -26,7 +26,7 @@ class Resource extends Model{
 		'condition',
 		'sort',
 		'type',
-		'is_domain',
+		'is_permission',
 		'hide',
 		'status',
 		'create_time',
