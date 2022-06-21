@@ -9,7 +9,7 @@
             "email": "912524639@qq.com"
         }
     ],
-    "minimum-stability": "dev",
+    "minimum-stability": "beta",
     "require": {
         "php": ">=7.0.0",
         "thinkmanage/tooles": "*",
